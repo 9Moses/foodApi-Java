@@ -6,6 +6,7 @@ import com.business.foodie.api.model.UserEntity;
 import com.business.foodie.api.repository.UserRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +19,7 @@ public class UserServiceImp implements UserService{
 
     @Autowired
     private final PasswordEncoder passwordEncoder;
+    private  final AuthenticationFacade authenticationFacade;
 
     @Override
     public UserResponse registerUser(UserRequest request) {
@@ -25,6 +27,14 @@ public class UserServiceImp implements UserService{
       newUser =  repository.save(newUser);
       return convertTOResponse(newUser);
     }
+
+    @Override
+    public String findByUserId() {
+        String loggedEmail = authenticationFacade.getAuthentication().getName();
+        UserEntity loggedInUser = repository.findByEmail(loggedEmail).orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        return loggedInUser.getId();
+    }
+
 
     private UserEntity convertToEntity(UserRequest request){
         return UserEntity.builder()
