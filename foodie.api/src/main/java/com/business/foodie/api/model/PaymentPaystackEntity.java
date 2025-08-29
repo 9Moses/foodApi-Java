@@ -40,8 +40,8 @@ public class PaymentPaystackEntity {
     @Field(name = "ip_address")
     private String ipAddress;
 
-    @Field("pricing_plan_type")
-    private PricingPlanType pricingPlanType = PricingPlanType.BASIC;
+//    @Field("pricing_plan_type")
+//    private PricingPlanType pricingPlanType = PricingPlanType.BASIC;
 
     @CreatedDate
     @Field("created_on")

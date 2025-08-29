@@ -5,6 +5,9 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
+import java.math.BigDecimal;
+import java.util.Date;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -12,10 +15,15 @@ import lombok.*;
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class OrderResponse {
+public class PaymentVerificationResponse {
 
-    private Boolean status;
+    @JsonProperty("status")
+    private String status;
+
+    @JsonProperty("message")
     private String message;
+
+    @JsonProperty("data")
     private Data data;
 
     @Getter
@@ -24,22 +32,16 @@ public class OrderResponse {
     @NoArgsConstructor
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class Data {
-
-        @JsonProperty("id")
-        private String id;
-
-        @JsonProperty("reference")
-        private String reference;
+    public static class Data{
 
         @JsonProperty("status")
         private String status;
 
-        @JsonProperty("amount")
-        private Double amount;
+        @JsonProperty("reference")
+        private String reference;
 
-        @JsonProperty("currency")
-        private String currency;
+        @JsonProperty("amount")
+        private BigDecimal amount;
 
         @JsonProperty("gateway_response")
         private String gatewayResponse;
@@ -53,34 +55,19 @@ public class OrderResponse {
         @JsonProperty("channel")
         private String channel;
 
+        @JsonProperty("currency")
+        private String currency;
+
         @JsonProperty("ip_address")
         private String ipAddress;
 
-        @JsonProperty("customer")
-        private Customer customer;
-    }
+        @JsonProperty("pricing_plan_type")
+        private String pricingPlanType;
 
-    @Getter
-    @Setter
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class Customer {
+        @JsonProperty("created_on")
+        private Date createdOn = new Date();
 
-        @JsonProperty("id")
-        private String id;
-
-        @JsonProperty("first_name")
-        private String firstName;
-
-        @JsonProperty("last_name")
-        private String lastName;
-
-        @JsonProperty("email")
-        private String email;
-
-        @JsonProperty("phone")
-        private String phone;
+        @JsonProperty("updated_on")
+        private Date updatedOn = new Date();
     }
 }
