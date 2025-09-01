@@ -18,10 +18,19 @@ public class OrderResponse {
     private String message;
     private Data data;
 
+    private String id;
+    private String userId;
+    private String email;
+    private String phoneNumber;
+    private String paymentStatus;
+    private String orderStatus;
+
+
     @Getter
     @Setter
     @AllArgsConstructor
     @NoArgsConstructor
+    @Builder
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Data {

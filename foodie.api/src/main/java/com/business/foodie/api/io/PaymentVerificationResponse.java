@@ -17,6 +17,8 @@ import java.util.Date;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class PaymentVerificationResponse {
 
+    private String id;
+
     @JsonProperty("status")
     private String status;
 
@@ -29,6 +31,7 @@ public class PaymentVerificationResponse {
     @Getter
     @Setter
     @AllArgsConstructor
+    @Builder
     @NoArgsConstructor
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -61,8 +64,6 @@ public class PaymentVerificationResponse {
         @JsonProperty("ip_address")
         private String ipAddress;
 
-        @JsonProperty("pricing_plan_type")
-        private String pricingPlanType;
 
         @JsonProperty("created_on")
         private Date createdOn = new Date();

@@ -6,6 +6,7 @@ import com.business.foodie.api.io.OrderRequest;
 import com.business.foodie.api.io.OrderResponse;
 import com.business.foodie.api.io.PaymentVerificationResponse;
 import com.business.foodie.api.model.OrderEntity;
+import com.business.foodie.api.model.PaymentPaystackEntity;
 import com.business.foodie.api.repository.OrderRepository;
 import com.business.foodie.api.repository.PaystackPaymentRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,14 +14,18 @@ import com.google.gson.Gson;
 import lombok.RequiredArgsConstructor;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.math.BigDecimal;
+import java.util.Date;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +33,7 @@ public class OrderServiceImp implements OrderService{
 
     private final OrderRepository orderRepository;
     private final PaystackPaymentRepository paymentRepository;
+    private final UserService userService;
 
     @Value("${paystack.secret.key}")
     private String paystackSecretKey;
@@ -50,12 +56,15 @@ public class OrderServiceImp implements OrderService{
 
         // Prepare response
         return OrderResponse.builder()
-                .id(newOrder.getId())
+                .data(OrderResponse.Data.builder()
+                        .id(newOrder.getId())
+
+                        .amount(newOrder.getAmount())
+
+                        .build())
                 .userId(newOrder.getUserId())
-                .userAddress(newOrder.getUserAddress())
                 .phoneNumber(request.getPhoneNumber())
                 .email(request.getEmail())
-                .amount(newOrder.getAmount())
                 .paymentStatus("pending")
                 .orderStatus("CREATED")
                 .build();
@@ -102,16 +111,99 @@ public class OrderServiceImp implements OrderService{
     }
 
     @Override
+    @Transactional
     public PaymentVerificationResponse paymentVerification(String reference, Long id) throws Exception {
+        PaymentVerificationResponse paymentVerificationResponse = null;
+
+        try{
+
+            HttpClient client = HttpClientBuilder.create().build();
+            HttpGet request = new HttpGet(PAYSTACK_VERIFY + reference);
+            request.addHeader("Content-type", "application/json");
+            request.addHeader("Authorization", "Bearer " + paystackSecretKey);
+
+            StringBuilder result = new StringBuilder();
+            HttpResponse response = client.execute(request);
+
+
+            if (response.getStatusLine().getStatusCode() == STATUS_CODE_OK) {
+                BufferedReader rd = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
+                String line;
+                while ((line = rd.readLine()) != null) {
+                    result.append(line);
+                }
+            } else {
+                throw new Exception("Paystack is unable to verify payment at the moment");
+            }
+
+            ObjectMapper mapper = new ObjectMapper();
+            paymentVerificationResponse = mapper.readValue(result.toString(), PaymentVerificationResponse.class);
+
+            if (paymentVerificationResponse != null
+                    && "success".equals(paymentVerificationResponse.getData().getStatus())) {
+
+
+                // Update order with payment success
+                OrderEntity order = orderRepository.findByUserId(id.toString())
+                        .orElseThrow(() -> new RuntimeException("Order not found"));
+
+                order.setPaymentStatus("PAID");
+                order.setOrderStatus("CONFIRMED");
+                order = orderRepository.save(order);
+
+                // Save payment info
+                PaymentPaystackEntity payment = PaymentPaystackEntity.builder()
+                        .userId(order.getUserId())
+                        .reference(paymentVerificationResponse.getData().getReference())
+                        .amount(BigDecimal.valueOf(paymentVerificationResponse.getData().getAmount().longValue()))
+                        .gatewayResponse(paymentVerificationResponse.getData().getGatewayResponse())
+                        .paidAt(paymentVerificationResponse.getData().getPaidAt())
+                        .createdAt(paymentVerificationResponse.getData().getCreatedAt())
+                        .channel(paymentVerificationResponse.getData().getChannel())
+                        .currency(paymentVerificationResponse.getData().getCurrency())
+                        .ipAddress(paymentVerificationResponse.getData().getIpAddress())
+                        .createdOn(new Date())
+                        .build();
+
+                paymentRepository.save(payment);
+
+                String loggedInUserId = userService.findByUserId();
+                order.setUserId(loggedInUserId);
+                order = orderRepository.save(order);
+                return convertToResponse(order);
+
+
+            }
+
+        }catch(Exception ex){
+            throw new Exception("Paystack verification failed", ex);
+        }
+
         return null;
     }
 
+    private PaymentVerificationResponse convertToResponse(OrderEntity order) {
+        return PaymentVerificationResponse.builder()
+                .id(order.getId())
+                .status(order.getOrderStatus()) // e.g. "success", "pending", etc.
+                .message("Payment verification result for order " + order.getId())
+                .data(PaymentVerificationResponse.Data.builder()
+                        .status(order.getOrderStatus())
+                        .amount(BigDecimal.valueOf(order.getAmount())) // store in Naira
+                        .updatedOn(new Date()) // or map from entity
+                        .build())
+                .build();
+    }
+
+
     private OrderEntity convertToEntity(OrderRequest request) {
         return OrderEntity.builder()
-                .userId(request.getUserId())
                 .userAddress(request.getUserAddress())
                 .amount(request.getAmount())
                 .ordersItems(request.getOrderItems())
+                .email(request.getEmail())
+                .phoneNumber(request.getPhoneNumber())
+                .orderStatus(request.getOrderStatus())
                 .build();
     }
 }
