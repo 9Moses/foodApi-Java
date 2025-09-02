@@ -9,5 +9,5 @@ public interface OrderService {
 
   OrderResponse createOrderWithPayment(OrderRequest request);
     InitializePaymentResponse initializePayment(OrderRequest request);
-    PaymentVerificationResponse paymentVerification(String reference, Long id) throws Exception;
+    PaymentVerificationResponse paymentVerification(String reference, String id) throws Exception;
 }

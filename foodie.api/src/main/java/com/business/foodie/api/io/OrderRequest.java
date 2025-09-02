@@ -17,6 +17,6 @@ public class OrderRequest {
     private String reference; // unique order ref (you generate this)
 
     private String orderStatus;
-    private String callbackUrl; // Paystack will redirect here after payment
+   // private String callbackUrl; // Paystack will redirect here after payment
 
 }

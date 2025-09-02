@@ -75,11 +75,12 @@ public class OrderServiceImp implements OrderService{
         InitializePaymentResponse initializePaymentResponse = null;
 
         try {
-            // Paystack expects amount in Kobo => multiply by 100
+            // Paystack expects amount in Kobo
             request.setAmount(request.getAmount() * 100);
 
             Gson gson = new Gson();
             StringEntity postingString = new StringEntity(gson.toJson(request));
+
             HttpClient client = HttpClientBuilder.create().build();
             HttpPost post = new HttpPost(PAYSTACK_INITIALIZE_PAY);
 
@@ -87,32 +88,36 @@ public class OrderServiceImp implements OrderService{
             post.addHeader("Content-type", "application/json");
             post.addHeader("Authorization", "Bearer " + paystackSecretKey);
 
-            StringBuilder result = new StringBuilder();
             HttpResponse response = client.execute(post);
+            int statusCode = response.getStatusLine().getStatusCode();
 
-            if (response.getStatusLine().getStatusCode() == STATUS_CODE_OK) {
-                BufferedReader rd = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
-                String line;
-                while ((line = rd.readLine()) != null) {
-                    result.append(line);
-                }
-            } else {
-                throw new Exception("Paystack is unable to initialize payment at the moment");
+            StringBuilder result = new StringBuilder();
+            BufferedReader rd = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
+            String line;
+            while ((line = rd.readLine()) != null) {
+                result.append(line);
             }
 
-            ObjectMapper mapper = new ObjectMapper();
-            initializePaymentResponse = mapper.readValue(result.toString(), InitializePaymentResponse.class);
+            // Log what Paystack returns
+            System.out.println("Paystack response code: " + statusCode);
+            System.out.println("Paystack response body: " + result);
+
+            if (statusCode == 200) {
+                ObjectMapper mapper = new ObjectMapper();
+                initializePaymentResponse = mapper.readValue(result.toString(), InitializePaymentResponse.class);
+            } else {
+                throw new Exception("Paystack failed with status " + statusCode + " - " + result.toString());
+            }
 
         } catch (Exception ex) {
             ex.printStackTrace();
         }
         return initializePaymentResponse;
-
     }
 
     @Override
     @Transactional
-    public PaymentVerificationResponse paymentVerification(String reference, Long id) throws Exception {
+    public PaymentVerificationResponse paymentVerification(String reference, String id) throws Exception {
         PaymentVerificationResponse paymentVerificationResponse = null;
 
         try{
