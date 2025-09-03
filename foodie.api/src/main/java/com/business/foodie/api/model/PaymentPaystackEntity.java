@@ -13,7 +13,7 @@ import java.util.Date;
 @Document(collection = "paystack_payment")
 public class PaymentPaystackEntity {
     @Id
-    private Long id;
+    private String id;
 
     private String userId;
 

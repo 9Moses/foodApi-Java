@@ -7,6 +7,7 @@ import com.business.foodie.api.io.OrderResponse;
 import com.business.foodie.api.io.PaymentVerificationResponse;
 import com.business.foodie.api.model.OrderEntity;
 import com.business.foodie.api.model.PaymentPaystackEntity;
+import com.business.foodie.api.repository.CartRepository;
 import com.business.foodie.api.repository.OrderRepository;
 import com.business.foodie.api.repository.PaystackPaymentRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,6 +27,8 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +37,7 @@ public class OrderServiceImp implements OrderService{
     private final OrderRepository orderRepository;
     private final PaystackPaymentRepository paymentRepository;
     private final UserService userService;
+    private final CartRepository cartRepository;
 
     @Value("${paystack.secret.key}")
     private String paystackSecretKey;
@@ -118,6 +122,11 @@ public class OrderServiceImp implements OrderService{
     @Override
     @Transactional
     public PaymentVerificationResponse paymentVerification(String reference, String id) throws Exception {
+
+        // Update order with payment success
+        OrderEntity order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
         PaymentVerificationResponse paymentVerificationResponse = null;
 
         try{
@@ -148,13 +157,11 @@ public class OrderServiceImp implements OrderService{
                     && "success".equals(paymentVerificationResponse.getData().getStatus())) {
 
 
-                // Update order with payment success
-                OrderEntity order = orderRepository.findByUserId(id.toString())
-                        .orElseThrow(() -> new RuntimeException("Order not found"));
-
                 order.setPaymentStatus("PAID");
                 order.setOrderStatus("CONFIRMED");
                 order = orderRepository.save(order);
+
+                cartRepository.deleteByUserId(order.getUserId());
 
                 // Save payment info
                 PaymentPaystackEntity payment = PaymentPaystackEntity.builder()
@@ -186,6 +193,46 @@ public class OrderServiceImp implements OrderService{
 
         return null;
     }
+
+    @Override
+    public List<OrderResponse> getUserOrders() {
+        String loggedInUserId = userService.findByUserId();
+       List<OrderEntity> list = orderRepository.findByUserId(loggedInUserId);
+      return list.stream().map(entity -> convertToOderResponse(entity)).collect(Collectors.toList());
+    }
+
+    @Override
+    public void removeOrder(String orderId) {
+     orderRepository.deleteById(orderId);
+    }
+
+    @Override
+    public List<OrderResponse> getAllOrdersOfAllUsers() {
+        List<OrderEntity> list = orderRepository.findAll();
+        return list.stream().map(entity -> convertToOderResponse(entity)).collect(Collectors.toList());
+    }
+
+    @Override
+    public void updateOrderStatus(String orderId, String status) {
+       OrderEntity entity =  orderRepository.findById(orderId)
+                .orElseThrow(()-> new RuntimeException("Order not found"));
+       entity.setOrderStatus(status);
+       orderRepository.save(entity);
+    }
+
+    private OrderResponse convertToOderResponse(OrderEntity order) {
+        return OrderResponse.builder()
+                .id(order.getId())
+                .amount(order.getAmount())
+                .email(order.getEmail())
+                .userId(order.getUserId())
+                .paymentStatus(order.getPaymentStatus())
+                .orderStatus(order.getOrderStatus())
+                .phoneNumber(order.getPhoneNumber())
+                .orderItemList(order.getOrdersItems())
+                .build();
+    }
+
 
     private PaymentVerificationResponse convertToResponse(OrderEntity order) {
         return PaymentVerificationResponse.builder()

@@ -5,6 +5,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
+import java.util.List;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -17,13 +19,14 @@ public class OrderResponse {
     private Boolean status;
     private String message;
     private Data data;
-
+    private double amount;
     private String id;
     private String userId;
     private String email;
     private String phoneNumber;
     private String paymentStatus;
     private String orderStatus;
+    private List<OrderItem> orderItemList;
 
 
     @Getter
