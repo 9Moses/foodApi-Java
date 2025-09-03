@@ -158,7 +158,7 @@ public class OrderServiceImp implements OrderService{
 
 
                 order.setPaymentStatus("PAID");
-                order.setOrderStatus("CONFIRMED");
+                order.setOrderStatus("Preparing");
                 order = orderRepository.save(order);
 
                 cartRepository.deleteByUserId(order.getUserId());
